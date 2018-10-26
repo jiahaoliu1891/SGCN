@@ -4,6 +4,7 @@ import numpy as np
 from sklearn import manifold
 import matplotlib.pyplot as plt
 import heapq
+import torch
 
 
 def laplacian(W, normalize=True):
@@ -55,7 +56,8 @@ def compute_degree(data):
     :param data:
     :return:
     """
-    degree = data.detach().numpy().copy()     # 注意这里是copy，不然会改变原始数据
+    data = data.detach()           # 注意这里是copy，不然会改变原始数据
+    degree = data.cpu().numpy().copy() if torch.cuda.is_available() else data.numpy().copy()
     degree = np.sum(degree, axis=1)
     return degree
 

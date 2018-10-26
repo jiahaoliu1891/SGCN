@@ -39,9 +39,15 @@ def trainSiamese(EPOCH=100, EPOCH_C=100, MARGIN = 10.0, FEAT1 = 32, FEAT2 = 64, 
     # criteria = torch.nn.BCELoss()
 
     trainData, testData = dataSet.getDataTensor(trainSize=60)
+
     trainSize, testSize = dataSet.getTrainSize(), dataSet.getTestSize()
     trainfMRI, trainDTI, trainLabel = trainData['fMRI'], trainData["DTI"], trainData["label"]
     testfMRI, testDTI, testLabel = testData['fMRI'], testData["DTI"], testData["label"]
+
+    if torch.cuda.is_available():
+        # print("CUDA is available!")
+        net.cuda()
+        trainfMRI, trainDTI, testfMRI, testDTI, trainLabel = map(lambda x: x.cuda(), [trainfMRI, trainDTI, testfMRI, testDTI, trainLabel])
 
     I = torch.Tensor(np.eye(graphSize))
 
@@ -92,6 +98,12 @@ def trainSiamese(EPOCH=100, EPOCH_C=100, MARGIN = 10.0, FEAT1 = 32, FEAT2 = 64, 
     embeddingsTrain = net.forwardDownSample(trainfMRI, trainDTI).detach()
     embeddingsTest = net.forwardDownSample(testfMRI, testDTI).detach()
     classNet = ClassifyNetwork((graphSize - NSMALL) * FEAT2)
+
+    if torch.cuda.is_available():
+        # print("CUDA is available!")
+        classNet.cuda()
+        embeddingsTrain, embeddingsTest =  embeddingsTrain.cuda(), embeddingsTest.cuda()
+
     acc_list = trainClassNet(classNet, embeddingsTrain, embeddingsTest, trainLabel, testLabel, testSize, EPOCH_C, LR2)
 
     return np.array(acc_list)
@@ -102,7 +114,7 @@ def trainClassNet(classNet, embeddingsTrain, embeddingsTest, trainLabel, testLab
     optm = optim.Adam(classNet.parameters(), lr=LR2)
 
     def compute_acc():
-        X = classNet(embeddingsTest).detach().numpy()
+        X = classNet(embeddingsTest).cpu().detach().numpy() if torch.cuda.is_available() else classNet(embeddingsTest).detach().numpy()
         X[X >= 0.5] = 1
         X[X < 0.5] = 0
         return ((X == testLabel).sum()) / testSize
@@ -149,11 +161,11 @@ if __name__ == "__main__":
 
     for epoch in epoch_list:
         for margin in margin_list:
-            print("===========================================参数配置=============================")
+            print("================================== Parameter =============================")
             print("epoch:{}, margin:{}, feat1:{}, feat2:{}, lr1:{}".format(epoch, margin, feat1, feat2, lr1))
             for i in range(25):
                 acc_list = trainSiamese(epoch, epoch_C, margin, feat1, feat2, lr1, lr2, PLOT=False)
                 hist[i] = acc_list
-            print("准确率{}, index{}".format(hist.mean(axis=0).max(), hist.mean(axis=0).argmax()))
+            print("Accuracy: {}, Index: {}".format(hist.mean(axis=0).max(), hist.mean(axis=0).argmax()))
             time.sleep(epoch*5*margin)
 
