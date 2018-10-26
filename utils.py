@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn import manifold
 import matplotlib.pyplot as plt
+import heapq
 
 
 def laplacian(W, normalize=True):
@@ -43,3 +44,33 @@ def t_SNE(X, y):
     plt.xticks([])
     plt.yticks([])
     plt.show()
+
+
+def compute_degree(data):
+    """
+    统计输入矩阵 [n x n] 的度
+    返回一个 numpy array
+    :param data:
+    :return:
+    """
+    degree = data.detach().numpy().copy()     # 注意这里是copy，不然会改变原始数据
+    degree = np.sum(degree, axis=1)
+    return degree
+
+
+def nlarge_index(data, n):
+    """
+    统计 degree 中 前n大数据的下标
+    :param data:
+    :return:
+    """
+    return heapq.nlargest(n, range(len(data)), data.take)
+
+
+def nsmall_index(data, n):
+    """
+    统计 degree 中 前n大数据的下标
+    :param data:
+    :return:
+    """
+    return heapq.nsmallest(n, range(len(data)), data.take)

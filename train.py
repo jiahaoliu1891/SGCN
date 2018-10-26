@@ -5,8 +5,7 @@ from sklearn import manifold
 import numpy as np
 from BPdata import BPDataSet
 from model import *
-import scipy.io as sio
-
+from config import *
 
 def get_train_shuffle(trainfMRI, trainDTI, trainLabel, trainSize):
     # Siamese 网络用的 shuffle 数据
@@ -28,7 +27,6 @@ def trainSiamese(EPOCH=100, EPOCH_C=100, MARGIN = 10.0, FEAT1 = 32, FEAT2 = 64, 
     # FEAT2 = 64
     # LR1 = 0.01
     # PLOT = False
-
 
     dataSet = BPDataSet()
     graphSize = dataSet.getGraphSize()
@@ -56,8 +54,8 @@ def trainSiamese(EPOCH=100, EPOCH_C=100, MARGIN = 10.0, FEAT1 = 32, FEAT2 = 64, 
         loss.backward()
         optimizer.step()
 
-        print("Epoch number {} ".format(epoch))
-        print("Current loss {} Accuracy:{}".format(loss.item(), 0))
+        # print("Epoch number {} ".format(epoch))
+        # print("Current loss {} Accuracy:{}".format(loss.item(), 0))
 
         if (epoch % 50 == 0 or epoch == EPOCH-1) and PLOT:
             # 先将 训练数据 和 测试数据 合并起来， 然后进行一起使用 t-SNE 进行降维
@@ -89,23 +87,12 @@ def trainSiamese(EPOCH=100, EPOCH_C=100, MARGIN = 10.0, FEAT1 = 32, FEAT2 = 64, 
             plt.show()
 
 
-    # newData = dataSet.getData()
-    # newfMRI = newData["fMRI"]
-    # newDTI = newData["DTI"]
-    # newfMRI, newDTI = map(lambda x: torch.Tensor(x), [newfMRI, newDTI])
-    # net.forwardSave(newfMRI, newDTI)
+    embeddingsTrain = net.forwardDownSample(trainfMRI, trainDTI).detach()
+    embeddingsTest = net.forwardDownSample(testfMRI, testDTI).detach()
+    classNet = ClassifyNetwork((graphSize - NSMALL) * FEAT2)
+    acc_list = trainClassNet(classNet, embeddingsTrain, embeddingsTest, trainLabel, testLabel, testSize, EPOCH_C, LR2)
 
-    # np.savetxt("./label.csv", trainLabel.numpy(), delimiter='\n')
-
-    embeddingsTrain = net.forward_once(trainfMRI, trainDTI).detach()
-    embeddingsTest = net.forward_once(testfMRI, testDTI).detach()
-    classNet = ClassifyNetwork(FEAT2 * graphSize)
-    acc = trainClassNet(classNet, embeddingsTrain, embeddingsTest, trainLabel, testLabel, testSize, EPOCH_C, LR2)
-
-    print(acc)
-    # if acc > 0.63:
-    #     dataSet.makeNewData()
-    return acc
+    return np.array(acc_list)
 
 
 def trainClassNet(classNet, embeddingsTrain, embeddingsTest, trainLabel, testLabel, testSize, EPOCH_C, LR2):
@@ -122,6 +109,8 @@ def trainClassNet(classNet, embeddingsTrain, embeddingsTest, trainLabel, testLab
     idx = np.arange(train_size)
     acc = 0
 
+    acc_list = []
+
     for i in range(EPOCH_C):
         np.random.shuffle(idx)
         embeddings_shuffle = embeddingsTrain[idx]
@@ -135,48 +124,34 @@ def trainClassNet(classNet, embeddingsTrain, embeddingsTest, trainLabel, testLab
         optm.step()
 
         acc = compute_acc()
-        print("Epoch number {} ".format(i))
-        print("Current loss {} Accuracy:{}".format(Loss.item(), acc))
+        # print("Epoch number {} ".format(i))
+        # print("Current loss {} Accuracy:{}".format(Loss.item(), acc))
 
-        if Loss.item() <= 0.1:
-            return acc
+        if i in range(0, 500):
+            acc_list.append(acc)
 
-    return acc
+    return acc_list
 
 
 if __name__ == "__main__":
 
     import time
-    #
-    # EPOCH = [10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200]
-    # MARGIN = [0.1,0.5,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-    # FEAT1 = [4,8,16,32,64,128,256]
-    # FEAT2 = [4,8,16,32,64,128,256]
-    # LR1 = [0.002,0.005,0.01]
-    # PLOT = False
-
-    # epoch = 10
-    # epoch_C = 90
-    # margin = 0.5
-    # feat1 = 128
-    # feat2 = 128
-    # lr1 = 0.01
-
-    hist = []
-    epoch = 10
-    epoch_C = 45
-    margin = 1.5
+    hist = np.zeros((25, 500))
+    epoch_list = range(7, 15)
+    epoch_C = 500
+    margin_list = [1.0, 1.2, 1.4, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4]
     feat1 = 256
-    feat2 = 128
+    feat2 = 256
     lr1 = 0.01
     lr2 = 0.001
 
-    print("===========================================参数配置=============================")
-    print("epoch:{}, margin:{}, feat1:{}, feat2:{}, lr1:{}".format(epoch, margin, feat1, feat2, lr1))
-    # trainSiamese(epoch, epoch_C, margin, feat1, feat2, lr1, PLOT=False)
-    for i in range(25):
-        hist.append(trainSiamese(epoch, epoch_C, margin, feat1, feat2, lr1, lr2, PLOT=False))
-    print("==================================准确率{}=============================".format(np.mean(hist)))
-
-
+    for epoch in epoch_list:
+        for margin in margin_list:
+            print("===========================================参数配置=============================")
+            print("epoch:{}, margin:{}, feat1:{}, feat2:{}, lr1:{}".format(epoch, margin, feat1, feat2, lr1))
+            for i in range(25):
+                acc_list = trainSiamese(epoch, epoch_C, margin, feat1, feat2, lr1, lr2, PLOT=False)
+                hist[i] = acc_list
+            print("准确率{}, index{}".format(hist.mean(axis=0).max(), hist.mean(axis=0).argmax()))
+            time.sleep(epoch*5*margin)
 

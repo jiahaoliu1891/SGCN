@@ -2,7 +2,6 @@ import scipy.io as sio
 import torch
 import numpy as np
 from utils import *
-import heapq
 norm = lambda x: (x-x.min())/(x.max()-x.min())
 
 
@@ -191,13 +190,13 @@ if __name__ == "__main__":
     fMRI = data['fMRI']
     DTI = data['DTI']
 
-
     # 统计度
-    degree = DTI[0].copy()
-    degree[ degree >0 ] = 1
-    degree = np.sum(degree, axis = 1)
-    for i in range(degree.shape[0]):
-        print("i:{},    degree:{}".format(i, degree[i]))
-    print(degree.max())
+    for k in range(DTI.shape[0]):
+        degree = compyte_degree(DTI[k])
+        plt.hist(degree, 50)
+        plt.show()
+        # for i in range(degree.shape[0]):
+            # print("i:{},    degree:{}".format(i, degree[i]))
+
 
 

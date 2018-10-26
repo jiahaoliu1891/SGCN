@@ -5,7 +5,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.init as init
 import numpy as np
-
+from utils import *
+from config import *
 
 class GraphConvolution(Module):
     """
@@ -50,44 +51,6 @@ def Korder(data, k):
     return r
 
 
-class K_GraphConvolution(Module):
-    def __init__(self, in_features, out_features, bias=True):
-        super(K_GraphConvolution, self).__init__()
-        self.K = 4
-        self.in_features = in_features
-        self.out_features = out_features
-        self.weight = Parameter(init.xavier_normal_(torch.empty(self.K, in_features, out_features)))
-
-        if bias:
-            self.bias = Parameter(init.constant_(torch.empty(out_features), 0.1))
-        else:
-            self.register_parameter('bias', None)
-
-    def forward(self, input, adj):
-
-        X = input.unsqueeze(dim=1)                              # 82,1,N,N
-        Input = torch.cat([X for k in range(self.K)], 1)        # 82,4,N,N
-        Supp = torch.matmul(Input, self.weight)                 # 82,4,N,C
-        Adj = torch.cat([Korder(adj, k).unsqueeze(dim=1) for k in range(self.K)], 1)    # 82,4,N,N
-        Out = torch.matmul(Adj, Supp)
-        if self.bias is not None:
-            Out = Out + self.bias
-        R = torch.sum(Out, dim=1)
-        return R
-        # r = 0
-        # for k in range(self.K):
-        #     Kadj = Korder(adj, k)
-        #     support = torch.matmul(input, self.weight[k])
-        #     out = torch.matmul(Kadj, support)
-        #     if self.bias is not None:
-        #         out = out + self.bias
-        #     if (Out[:, k]==out).all() != True or (Supp[:, k]==support).all() != True:
-        #         print("asdasdasdas")
-        #     r = r + out
-        # print((R==r).all())
-        # return r
-
-
 class GCN(nn.Module):
     def __init__(self, nfeat, nhid, nclass):
         super(GCN, self).__init__()
@@ -106,6 +69,12 @@ class GCN(nn.Module):
         x = F.relu(self.gc1(x, adj))
         x = self.gc2(x, adj)
         return x
+
+    def forwardDownSample(self, x, adj):
+        x = F.relu(self.gc1(x, adj))
+        x = self.gc2(x, adj)
+        return x
+
 
 
 class SiameseGCN(nn.Module):
@@ -126,6 +95,30 @@ class SiameseGCN(nn.Module):
         out2 = self.forward_once(x2, adj2)
         # 输出两个 embedding
         return out1, out2
+
+    def downSample(self):
+        pass
+
+    def forwardDownSample(self, x, adj):
+        # batchSize = x.shape[0]
+        # out = self.gcn.forwardDownSample(x, adj)
+        # for i in range(batchSize):
+        #     degree = compyte_degree(adj[i])
+        #     idx = nsmall_index(degree, NSMALL)
+        #     out[i][idx, :] = 0
+        # out = out.view(batchSize, -1)
+        # return out
+        batchSize = x.shape[0]
+        graphSize = x.shape[-1]
+        out = self.gcn.forwardDownSample(x, adj)
+        adj_sum = torch.sum(adj, dim=0)
+        degree = compute_degree(adj_sum)
+        idx = nsmall_index(degree, NSMALL)
+        whole_idx = np.arange(graphSize)
+        return_idx = np.setdiff1d(whole_idx, idx)
+        out = out[:, return_idx, :]
+        out = out.view(batchSize, -1)
+        return out
 
 
 class AddSiameseGCN(nn.Module):
