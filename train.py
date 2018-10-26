@@ -163,9 +163,12 @@ if __name__ == "__main__":
         for margin in margin_list:
             print("================================== Parameter =============================")
             print("epoch:{}, margin:{}, feat1:{}, feat2:{}, lr1:{}".format(epoch, margin, feat1, feat2, lr1))
+            start = time.clock()
             for i in range(25):
                 acc_list = trainSiamese(epoch, epoch_C, margin, feat1, feat2, lr1, lr2, PLOT=False)
                 hist[i] = acc_list
-            print("Accuracy: {}, Index: {}".format(hist.mean(axis=0).max(), hist.mean(axis=0).argmax()))
+            elapsed = (time.clock() - start)
+            histMean = hist.mean(axis=0)
+            print("Accuracy: {}, Index: {}, Time use: {}".format(histMean.max(), histMean.argmax(), elapsed))
             time.sleep(epoch*5*margin)
 
