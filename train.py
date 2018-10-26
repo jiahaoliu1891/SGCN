@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import torch
 from torch import optim
 import matplotlib.pyplot as plt

@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import scipy.io as sio
 import torch
 import numpy as np
