@@ -19,7 +19,6 @@ if __name__ == "__main__":
         DTI_degree = DTI[k].copy()
         DTI_degree = np.sum(DTI_degree, axis=1)
 
-        # 画出度随着节点的分布
         # pyplot.hist(DTI_degree, 50)
         # pyplot.show()
 

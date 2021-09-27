@@ -95,21 +95,12 @@ class SiameseGCN(nn.Module):
     def forward(self, x1, adj1, x2, adj2):
         out1 = self.forward_once(x1, adj1)
         out2 = self.forward_once(x2, adj2)
-        # 输出两个 embedding
         return out1, out2
 
     def downSample(self):
         pass
 
     def forwardDownSample(self, x, adj):
-        # batchSize = x.shape[0]
-        # out = self.gcn.forwardDownSample(x, adj)
-        # for i in range(batchSize):
-        #     degree = compyte_degree(adj[i])
-        #     idx = nsmall_index(degree, NSMALL)
-        #     out[i][idx, :] = 0
-        # out = out.view(batchSize, -1)
-        # return out
         batchSize = x.shape[0]
         graphSize = x.shape[-1]
         out = self.gcn.forwardDownSample(x, adj)
@@ -141,17 +132,13 @@ class AddSiameseGCN(nn.Module):
         out1 = self.forward_once(x1, adj1)
         out2 = self.forward_once(x2, adj2)
         outClass = torch.sigmoid(self.classify(out1))
-        return out1, out2, outClass             # 输出两个 embedding 以及 input1 对应的 label
+        return out1, out2, outClass             
 
     def test(self, x, adj):
         return torch.sigmoid(self.classify(self.forward_once(x, adj)))
 
 
 class ContrastiveLoss(torch.nn.Module):
-    """
-    label   等于 1 表示两个输入向量属于 同一类
-            等于 0 表示两个输入向量属于 不同类
-    """
     def __init__(self, margin=4):
         super(ContrastiveLoss, self).__init__()
         self.margin = margin
@@ -162,17 +149,12 @@ class ContrastiveLoss(torch.nn.Module):
 
         loss_same = label * torch.pow(euclidean_distance, 2)
         loss_diff = (1-label) * torch.pow(torch.clamp(self.margin - euclidean_distance, min=0.0), 2)
-        # print("same{}\t\tdiff{}".format(torch.mean(loss_same), torch.mean(loss_diff)))
         loss_contrastive = torch.mean(loss_same + loss_diff)
 
         return loss_contrastive
 
 
 class AddContrastiveLoss(torch.nn.Module):
-    """
-    label   等于 1 表示两个输入向量属于 同一类
-            等于 0 表示两个输入向量属于 不同类
-    """
     def __init__(self, lamb=1, margin=1.5):
         super(AddContrastiveLoss, self).__init__()
         self.margin = margin
@@ -202,7 +184,6 @@ class ClassifyNetwork(nn.Module):
         self.classify = torch.nn.Linear(nfeat, 1)
 
     def forward(self, W):
-        # 使用 sigmoid 函数将网络的输出压缩到0-1之间表示概率
         return torch.sigmoid(self.classify(W))
 
 
