@@ -13,6 +13,7 @@ we conduct extensive experiments on two real brain network
 datasets. The experimental results demonstrate the superior performance of the proposed approach in structural and functional
 joint embedding for neurological disorder analysis, indicating its
 promising value for clinical applications.
+
 See our BigData 2019 paper:
 * [Community-preserving Graph Convolutions for
 Structural and Functional Joint Embedding of Brain](https://arxiv.org/pdf/1911.03583.pdf)
